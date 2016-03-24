@@ -1,11 +1,45 @@
-// File contains a small piece of the source to demonstrate main module
-// of a sample application to be executed in the sandboxed context by
-// another pice of code from `framework.js`. Read README.md for tasks.
+// Файл содержит маленький кусочек основного модуля демонстрационного
+// прикладного приложения, загружаемого в песочницу демонстрационным
+// кусочком фреймворка. Читайте README.md в нем задания.
 
-// Print from the global context of application module
+// Подключение зависимостей
+var application2 = require('./application2.js');
+
+// Вывод из глобального контекста модуля
 console.log('From application global context');
 
 module.exports = function() {
-	// Print from the exported function context
+  // Вывод из контекста экспортируемой функции
   console.log('From application exported function');
 };
+module.exports.print = function(text) {
+  console.log(text);
+}
+module.exports.variable = 42;
+// Немного таймеров
+var timeout_log = function() {
+  console.log('Timeout: 1 second');
+};
+
+var interval_log = function() {
+  console.log('Interval: 2 second');
+};
+
+var timeout_id = setTimeout(timeout_log, 1000);
+var interval_id = setInterval(interval_log, 2000);
+// Убираем таймер
+var clear_interval = function() {
+  clearInterval(interval_id);
+  console.log('Timer cleared');
+};
+
+setTimeout(clear_interval, 10100);
+// Робота с Util
+util.log('Printed by util.log()');
+console.log(util.format('%s, %s', 'Hello', 'console!'));
+// Вызов супер функции из стороннего файла
+application2.superFunction();
+
+for(var key in global){
+  console.log(key + ' ' + typeof (global[key]));
+}
