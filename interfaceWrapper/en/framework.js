@@ -1,33 +1,31 @@
-// Wrapping function and interface example
+// Example: function wrapper in sandboxed context
 
 var fs = require('fs'),
     vm = require('vm');
 
-// Create a hash for application sandbox
+// Declare dictionary to convert it into sandboxed context
 var context = {
   module: {},
   console: console,
-  // Forward link to fs API into sandbox
-  fs: fs,
-  // Wrapper for setTimeout in sandbox
+  // Declare wrapper function for setTimeout
   setTimeout: function(callback, timeout) {
-    // Logging all setTimeout calls
+    // Add some behaviour for setTimeout
     console.log(
       'Call: setTimeout, ' +
       'callback function: ' + callback.name + ', ' +
       'timeout: ' + timeout
     );
     setTimeout(function() {
-      // Logging timer events before application event
+      // Add some behaviour on event
       console.log('Event: setTimeout, before callback');
-      // Calling user-defined timer event
+      // Call of orignal user-defined callback, passed to wrapper
       callback();
       console.log('Event: setTimeout, after callback');
     }, timeout);
   }
 };
 
-// Turn hash into context
+// Convert collection into sandboxed context
 context.global = context;
 var sandbox = vm.createContext(context);
 

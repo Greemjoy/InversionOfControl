@@ -1,70 +1,99 @@
-// Example showing us how the framework creates an environment (sandbox) for
-// appication runtime, load an application code and passes a sandbox into app
-// as a global context and receives exported application interface
+// Файл, демонстрирующий то, как фреймворк создает среду (песочницу) для
+// исполнения приложения, загружает приложение, передает ему песочницу в
+// качестве глобального контекста и получает ссылу на экспортируемый
+// приложением интерфейс. Читайте README.md в нем задания.
 
-// The framework can require core libraries
+// Фреймворк может явно зависеть от библиотек через dependency lookup
 var fs = require('fs'),
-    vm = require('vm');
+    vm = require('vm'),
+    util = require('util');
 
-// Create a hash and turn it into the sandboxed context which will be
-// the global context of an application
-var context = { module: {}, console: console };
+// Запуск фреймворка с разными приложениями через командную строку
+var applicationName = process.argv[2] || 'application';
+
+// Запись текста в файл <applicationName.log>
+function putThisIntoLogFile(text){
+  fs.appendFile(('./' + 'JustBestLogEver' + '.log'), (text + '\n'), function(err){
+    if (err) throw err;
+
+  });
+}
+
+// Обертка для вызова console.log()
+var sandboxConsole = {};
+sandboxConsole.log = function() {
+  var now = new Date();
+  var this_log = applicationName + ' ' + now.toDateString() + ' ' + now.toLocaleTimeString() + ' ' + arguments[0];
+
+  putThisIntoLogFile(this_log);
+
+  console.log(this_log);
+}
+
+// Обертка для вызова require из приложения
+function wrappedRequire(lib){
+  var now = new Date();
+  var this_log = now.toDateString() + ' ' + now.toLocaleTimeString() + ' ' + lib;
+
+  putThisIntoLogFile(this_log);
+
+  return require(lib);
+}
+
+// Чоздаем контекст-песочницу, которая станет глобальным контекстом приложения
+var context = { module: {},
+  console: sandboxConsole,
+  setTimeout: setTimeout,
+  setInterval: setInterval,
+  clearInterval: clearInterval,
+  util: util,
+  require: wrappedRequire
+};
 context.global = context;
 var sandbox = vm.createContext(context);
 
-// Read an application source code from the file
-var fileName = './application.js';
+var before = Object.keys(sandbox);
+
+// Читаем исходный код приложения из файла
+var fileName = './' + applicationName + '.js';
+
 fs.readFile(fileName, function(err, src) {
-  // We need to handle errors here
-  
-  // Run an application in sandboxed context
+  // Тут нужно обработать ошибки
+
+  // Запускаем код приложения в песочнице
   var script = vm.createScript(src, fileName);
   script.runInNewContext(sandbox);
-  // Файл содержит маленький кусочек основного модуля демонстрационного
-// прикладного приложения, загружаемого в песочницу демонстрационным
-// кусочком фреймворка. Читайте README.md в нем задания.
 
-// Подключение зависимостей
-var application2 = require('./application2.js');
+  // Забираем ссылку из sandbox.module.exports, можем ее исполнить,
+  // сохранить в кеш, вывести на экран исходный код приложения и т.д.
+  var fromSandbox = sandbox.module.exports;
+  for(var key in fromSandbox){
+    console.log(key + ' ' + typeof (fromSandbox[key]));
+  }
 
-// Вывод из глобального контекста модуля
-console.log('From application global context');
+  console.log('Exported function:\n'+
+      'text' + fromSandbox.print.toString());
 
-module.exports = function() {
-  // Вывод из контекста экспортируемой функции
-  console.log('From application exported function');
-};
-module.exports.print = function(text) {
-  console.log(text);
-}
-module.exports.variable = 42;
-// Немного таймеров
-var timeout_log = function() {
-  console.log('Timeout: 1 second');
-};
+  var after = Object.keys(sandbox);
 
-var interval_log = function() {
-  console.log('Interval: 2 second');
-};
+  console.log('Keys from framework befor start application:' +
+      before + '\nKeys from framework befor start application:' + after);
 
-var timeout_id = setTimeout(timeout_log, 1000);
-var interval_id = setInterval(interval_log, 2000);
-// Убираем таймер
-var clear_interval = function() {
-  clearInterval(interval_id);
-  console.log('Timer cleared');
-};
-
-setTimeout(clear_interval, 10100);
-// Робота с Util
-util.log('Printed by util.log()');
-console.log(util.format('%s, %s', 'Hello', 'console!'));
-// Вызов супер функции из стороннего файла
-application2.superFunction();
-
-for(var key in global){
-  console.log(key + ' ' + typeof (global[key]));
-}
-  // We can access a link to exported interface from sandbox.module.exports
-  // to execute, save to the cache, print to console, etc.
+  var added = 0, finded = 0;
+  for (var i in after){
+    checked = false;
+    for(var j in before){
+      if(i == j) {
+        checked = true;
+        break;
+      }
+    }
+    if(checked){
+      finded++;
+    }
+    else{
+      added++;
+    }
+  }
+  console.log('Added: ' + added + ', deleted: ' +                           (before.length - finded));
 });
